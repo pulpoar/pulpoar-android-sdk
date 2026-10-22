@@ -1,0 +1,11 @@
+.DS_Store
+.gradle/
+build/
+local.properties
+*.apk
+__pycache__/
+.idea/
+# Downloaded release files and private keys never belong here.
+/work/
+*.gpg
+*secret*

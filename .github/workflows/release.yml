@@ -1,0 +1,93 @@
+name: Release
+
+# Announces a version that the private build repository already published to the CDN. It publishes nothing itself:
+# it proves that what partners resolve is complete, intact and installable, then records it, tags it and creates the
+# GitHub release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version already published by the source repository's Android Try-On Release, e.g. 0.1.0 (no leading v)"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # Only from the default branch; the push below must not carry other branches' commits into it.
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Validate
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$ ]] || { echo "version must look like 1.2.3 or 1.2.3-rc.1"; exit 1; }
+          if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "tag $VERSION already exists"; exit 1
+          fi
+          grep -q "^## $VERSION\$" CHANGELOG.md || { echo "add a '## $VERSION' section to CHANGELOG.md first"; exit 1; }
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts
+
+      - name: Verify the published files
+        run: python3 scripts/verify_release.py "$VERSION" --work "$RUNNER_TEMP/verify"
+
+      - name: Read the engine version
+        id: engine
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          info = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "verify", "build-info.json")))
+          print("version=" + info["engine"]["coordinate"].split(":")[2])
+          # Only a pre-release may carry an engine that build-info.json admits is not 16 KB aligned (verify_release.py enforces it).
+          unaligned = "-" in os.environ["VERSION"] and not all(info["engine"]["native_libraries_16kb_aligned"].values())
+          print("unaligned=" + str(unaligned).lower())
+          PY
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+
+      - name: Install Android build platform
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+
+      - name: Build a partner app from the CDN
+        working-directory: consumer
+        run: |
+          ./gradlew --no-daemon --console=plain -PsdkVersion="$VERSION" -PexpectedEngine="${{ steps.engine.outputs.version }}" \
+            :app:verifyResolvedEngine :app:assembleDebug :app:assembleRelease
+
+      - name: The app runs on 16 KB page devices
+        if: steps.engine.outputs.unaligned != 'true'
+        run: python3 scripts/check_apk_16kb.py consumer/app/build/outputs/apk/debug/*.apk consumer/app/build/outputs/apk/release/*.apk
+
+      - name: Record, tag and release
+        run: |
+          mkdir -p releases
+          cp "$RUNNER_TEMP/verify/build-info.json" "releases/$VERSION.json"
+          awk -v v="## $VERSION" '$0==v{f=1;next} /^## /{f=0} f' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "releases/$VERSION.json"
+          git commit -m "Release $VERSION"
+          git tag -a "$VERSION" -m "PulpoAR Android SDK $VERSION"
+          # Atomic: either the branch and the tag both land or neither does, so a rejected push can be retried.
+          git push --atomic origin HEAD:${{ github.event.repository.default_branch }} "$VERSION"
+          flags=()
+          [[ "$VERSION" == *-* ]] && flags+=(--prerelease)
+          gh release create "$VERSION" --title "$VERSION" --notes-file "$RUNNER_TEMP/notes.md" "${flags[@]}"

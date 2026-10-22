@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 5 * * 1" # weekly: released files must still be exactly what was released
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scripts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Script tests
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts -v
+      - name: Changelog has a section for every recorded release
+        run: |
+          for file in releases/*.json; do
+            [ -e "$file" ] || continue
+            version=$(basename "$file" .json)
+            grep -q "^## $version\$" CHANGELOG.md || { echo "CHANGELOG.md has no '## $version' section"; exit 1; }
+          done
+
+  released-versions:
+    # Every recorded release must still verify against the CDN, and the CDN's manifest must equal the recorded one.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Verify
+        run: |
+          shopt -s nullglob
+          files=(releases/*.json)
+          [ ${#files[@]} -gt 0 ] || { echo "no releases recorded yet"; exit 0; }
+          for file in "${files[@]}"; do
+            python3 scripts/verify_release.py "$(basename "$file" .json)" --expect "$file"
+          done
