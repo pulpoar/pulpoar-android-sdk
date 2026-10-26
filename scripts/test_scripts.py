@@ -50,6 +50,13 @@ class ArchiveTests(unittest.TestCase):
             archive.writestr("lib/arm64-v8a/libx.so", elf(16384))
         self.assertEqual(apk.check_archive(path), [])
 
+    def test_32_bit_libraries_are_not_checked(self):
+        path = self.dir / "a.apk"
+        with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("lib/arm64-v8a/libx.so", elf(16384))
+            archive.writestr("lib/armeabi-v7a/libx.so", elf(4096, wide=False))
+        self.assertEqual([], apk.check_archive(path))
+
     def test_misaligned_segment_fails(self):
         path = zip_with(self.dir / "a.apk", {"lib/arm64-v8a/libx.so": elf(4096)})
         self.assertTrue(any("alignment is 4096" in p for p in apk.check_archive(path)))

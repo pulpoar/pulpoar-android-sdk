@@ -2,10 +2,11 @@
 """Checks that an APK (or AAR) works on devices with 16 KB memory pages (Android 15+).
 
 Two rules, both from Google's guidance:
-  * every PT_LOAD segment of every native library has p_align >= 16384, and
+  * every PT_LOAD segment of every 64-bit native library has p_align >= 16384, and
   * a native library stored uncompressed in the APK starts at a multiple of 16384 within the file
     (compressed libraries are extracted at install time and need nothing).
-All ABIs are checked, not only the 64-bit ones the Play Store requires.
+Only arm64-v8a and x86_64 are checked: 16 KB page devices are 64-bit only, and Google Play's requirement covers
+64-bit libraries. armeabi-v7a and x86 libraries are skipped.
 """
 import argparse
 import struct
@@ -13,6 +14,7 @@ import sys
 import zipfile
 
 PAGE = 16384
+ABIS_64 = ("arm64-v8a", "x86_64")
 
 
 def load_alignments(data):
@@ -58,6 +60,8 @@ def check_archive(path, prefixes=("lib/",), zip_offsets=True):
     with zipfile.ZipFile(path) as archive:
         for info in archive.infolist():
             if not info.filename.endswith(".so") or not info.filename.startswith(prefixes):
+                continue
+            if info.filename.split("/")[1] not in ABIS_64:
                 continue
             found += 1
             try:
