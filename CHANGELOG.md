@@ -5,6 +5,18 @@ section states the engine (`com.pulpoar:pulpo-module`) it pins.
 
 ## Unreleased
 
+## 0.1.0
+
+First final release. Pins engine `com.pulpoar:pulpo-module:0.0.3`.
+
+- **Before/after on the live camera:** the compare button in `tryon-ui` now also shows on the live camera. In
+  `tryon-kit`, `PulpoCameraView` gains `beforeAfterPosition`: the frame as it went in left of that fraction of the view's
+  width, the try-on right of it, and `null` (the default) shows only the try-on.
+- **Layout:** the intensity slider is centered under the right-side buttons, and the Look and Products card titles stay
+  above the navigation bar's buttons on devices with three-button navigation.
+- **16 KB page size:** the engine's 64-bit native libraries are aligned, as in `0.1.0-rc.2`, and PulpoAR has now run the
+  SDK on a 16 KB device.
+
 ## 0.1.0-rc.2
 
 Pins engine `com.pulpoar:pulpo-module:0.0.3`.

@@ -22,11 +22,10 @@ metadata and the POM), so you cannot end up with an untested combination.
   work but are not tested by the release checks. `tryon-ui` needs the Kotlin Compose compiler plugin (`org.jetbrains.kotlin.plugin.compose`).
 - Native libraries ship for `arm64-v8a`, `armeabi-v7a`, `x86` and `x86_64`. The release checks run the build against the
   Gradle toolchain above; they do not run on a device or emulator.
-- **16 KB page size:** the 64-bit native libraries (`arm64-v8a`, `x86_64`) of the engine pinned by `0.1.0-rc.2`
+- **16 KB page size:** the 64-bit native libraries (`arm64-v8a`, `x86_64`) of the engine pinned by `0.1.0`
   (`0.0.3`) are 16 KB aligned, and every release checks that. `armeabi-v7a` and `x86` stay 4 KB: 16 KB page devices are
   64-bit only, and Google Play's requirement covers 64-bit libraries. `0.1.0-rc.1` (engine `0.0.2`) is not aligned and
-  cannot go to Google Play as a new app targeting Android 15 or newer. Alignment is checked on the files, not yet on a
-  16 KB device by PulpoAR; see the [changelog](CHANGELOG.md).
+  cannot go to Google Play as a new app targeting Android 15 or newer. See the [changelog](CHANGELOG.md).
 
 The manifest permissions `INTERNET`, `ACCESS_NETWORK_STATE` and `CAMERA` are merged in by the SDK. The camera permission
 is requested by the UI; photo uploads use the system photo picker and need no permission.
