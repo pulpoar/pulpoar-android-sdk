@@ -1,7 +1,8 @@
 # Changelog
 
 All notable changes to the PulpoAR Android SDK are listed here. Versions follow semantic versioning; every release
-section states the engine (`com.pulpoar:pulpo-module`) it pins.
+section states the engine it pins (`com.pulpoar:pulpo-module` for Try-On, `com.pulpoar:pulpo-skinai` for SkinAI).
+Try-On and SkinAI share one version line: each version releases one of them.
 
 ## Unreleased
 
