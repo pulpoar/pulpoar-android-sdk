@@ -122,8 +122,8 @@ permission. `setIntensity`, `clear`, `snapshot` and the `track*` analytics calls
 pages for the public classes are not published yet; the source of truth is the released AAR's Kotlin signatures (your IDE
 shows the KDoc).
 
-[`consumer/`](consumer) is a minimal app using the UI; the release workflow builds it against the published files.
-Build it yourself:
+[`consumer/`](consumer) is a minimal app using the UI (`-Pproduct=skinai`: the SkinAI Kit instead); the release
+workflow builds it against the published files. Build it yourself:
 
 ```sh
 cd consumer
@@ -133,7 +133,7 @@ cd consumer
 ## Verification
 
 Every file has `.sha256` and `.sha512` sidecars, and each version has a manifest,
-`https://assets.pulpoar.com/vision/pulpo-sdk/android/tryon/<version>/build-info.json`, listing every file with its
+`https://assets.pulpoar.com/vision/pulpo-sdk/android/<product>/<version>/build-info.json` (`tryon` or `skinai`), listing every file with its
 size and SHA-256. Before a version is announced, the release workflow in this repository checks that what the CDN serves:
 
 - matches the sizes and SHA-256 sums the build recorded, and that the manifest is saved in this repository as
@@ -147,6 +147,9 @@ Run the same check yourself, with Python 3:
 ```sh
 python3 scripts/verify_release.py <version> --expect releases/<version>.json
 ```
+
+Try-On and SkinAI share one version line, so each version is one product's release; the script reads which from
+`releases/<version>.json` (or pass `--product skinai`).
 
 `--expect` compares the CDN's manifest with the one recorded in this repository when the version was released. Without it,
 the script uses `releases/<version>.json` automatically if it sits next to the script (a clone of this repository).

@@ -95,14 +95,19 @@ class VerifyReleaseTests(unittest.TestCase):
         body = "".join(f"<dependency><groupId>com.pulpoar</groupId><artifactId>{a}</artifactId><version>{v}</version></dependency>" for a, v in deps.items())
         return f'<project xmlns="http://maven.apache.org/POM/4.0.0"><artifactId>{name}</artifactId><dependencies>{body}</dependencies></project>'.encode()
 
+    PRODUCT, ENGINE_NAME = "tryon", "pulpo-module"
+
+    def payloads(self, engine_aar):
+        return {
+            ("tryon-kit", self.VERSION): {"aar": b"kit", "pom": self.pom("tryon-kit", {"pulpo-module": f"[{self.ENGINE}]"}), "module": b"{}"},
+            ("tryon-ui", self.VERSION): {"aar": b"ui", "pom": self.pom("tryon-ui", {"tryon-kit": self.VERSION}), "module": b"{}"},
+            ("pulpo-module", self.ENGINE): {"aar": engine_aar, "pom": self.pom("pulpo-module", {})},
+        }
+
     def build(self, engine_alignment=16384):
         engine = self.dir / "engine.aar"
         zip_with(engine, {"jni/arm64-v8a/libx.so": elf(engine_alignment)})
-        payloads = {
-            ("tryon-kit", self.VERSION): {"aar": b"kit", "pom": self.pom("tryon-kit", {"pulpo-module": f"[{self.ENGINE}]"}), "module": b"{}"},
-            ("tryon-ui", self.VERSION): {"aar": b"ui", "pom": self.pom("tryon-ui", {"tryon-kit": self.VERSION}), "module": b"{}"},
-            ("pulpo-module", self.ENGINE): {"aar": engine.read_bytes(), "pom": self.pom("pulpo-module", {})},
-        }
+        payloads = self.payloads(engine.read_bytes())
         artifacts = []
         for (name, version), files in payloads.items():
             listing = []
@@ -113,13 +118,13 @@ class VerifyReleaseTests(unittest.TestCase):
                     self.remote[f"{path}.{algorithm}"] = hashlib.new(algorithm, data).hexdigest().encode()
                 listing.append({"path": path, "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)})
             artifacts.append({"coordinate": f"com.pulpoar:{name}:{version}", "files": listing})
-        self.info = {"schema": 1, "version": self.VERSION, "engine": {"coordinate": f"com.pulpoar:pulpo-module:{self.ENGINE}"}, "artifacts": artifacts}
+        self.info = {"schema": 1, "version": self.VERSION, "engine": {"coordinate": f"com.pulpoar:{self.ENGINE_NAME}:{self.ENGINE}"}, "artifacts": artifacts}
         self.publish_info()
 
     def publish_info(self):
-        self.remote[f"tryon/{self.VERSION}/build-info.json"] = json.dumps(self.info).encode()
+        self.remote[f"{self.PRODUCT}/{self.VERSION}/build-info.json"] = json.dumps(self.info).encode()
 
-    def run_verify(self, expect=None):
+    def run_verify(self, expect=None, product=None):
         def fake(url, **_):
             key = url.replace("https://cdn.test/", "")
             key = key[len("maven/"):] if key.startswith("maven/") else key
@@ -127,7 +132,7 @@ class VerifyReleaseTests(unittest.TestCase):
                 raise OSError(f"404 {key}")
             return self.remote[key]
         with mock.patch.object(vr, "fetch", fake):
-            return vr.verify(self.VERSION, "https://cdn.test", expect, self.dir / "work")
+            return vr.verify(self.VERSION, "https://cdn.test", expect, self.dir / "work", product or self.PRODUCT)
 
     def test_good_release_verifies(self):
         self.assertEqual(self.run_verify(), [])
@@ -229,6 +234,53 @@ class VerifyReleaseTests(unittest.TestCase):
 
     def test_rejects_non_release_version(self):
         self.assertTrue(vr.verify("main"))
+
+
+class SkinAIVerifyReleaseTests(unittest.TestCase):
+    """A SkinAI release: skinai-kit alone, pinning pulpo-skinai. Reuses the Try-On fixture, not its Try-On-only tests."""
+    VERSION, PRODUCT, ENGINE_NAME, ENGINE = "1.2.3", "skinai", "pulpo-skinai", "0.2.0"
+    setUp, pom, publish_info, run_verify = (VerifyReleaseTests.setUp, VerifyReleaseTests.pom,
+                                            VerifyReleaseTests.publish_info, VerifyReleaseTests.run_verify)
+
+    def payloads(self, engine_aar):
+        return {
+            ("skinai-kit", self.VERSION): {"aar": b"kit", "pom": self.pom("skinai-kit", {"pulpo-skinai": f"[{self.ENGINE}]"}), "module": b"{}"},
+            ("pulpo-skinai", self.ENGINE): {"aar": engine_aar, "pom": self.pom("pulpo-skinai", {})},
+        }
+
+    def build(self, engine_alignment=16384):
+        VerifyReleaseTests.build(self, engine_alignment)
+        self.info["product"] = "skinai"
+        self.publish_info()
+
+    def test_good_release_verifies(self):
+        self.assertEqual(self.run_verify(), [])
+
+    def test_wrong_engine_pin_fails(self):
+        self.remote[f"com/pulpoar/skinai-kit/{self.VERSION}/skinai-kit-{self.VERSION}.pom"] = self.pom("skinai-kit", {"pulpo-skinai": "[9.9.9]"})
+        self.assertTrue(any("POM" in p for p in self.run_verify()))
+
+    def test_unaligned_engine_fails(self):
+        self.build(engine_alignment=4096)
+        self.assertTrue(any(p.startswith("engine ") for p in self.run_verify()))
+
+    def test_a_try_on_engine_is_refused(self):
+        self.info["engine"]["coordinate"] = f"com.pulpoar:pulpo-module:{self.ENGINE}"
+        self.publish_info()
+        self.assertTrue(any("engine is" in p for p in self.run_verify()))
+
+    def test_a_manifest_of_the_other_product_is_refused(self):
+        del self.info["product"]  # what a Try-On manifest looks like
+        self.publish_info()
+        self.assertTrue(any("product is 'tryon'" in p for p in self.run_verify()))
+
+    def test_the_product_comes_from_the_recorded_release(self):
+        recorded = self.dir / f"{self.VERSION}.json"
+        recorded.write_text(json.dumps(self.info))
+        seen = {}
+        with mock.patch.object(vr, "verify", lambda *a: seen.setdefault("product", a[4]) and []):
+            self.assertEqual(vr.main([self.VERSION, "--expect", str(recorded)]), 0)
+        self.assertEqual(seen["product"], "skinai")
 
 
 if __name__ == "__main__":

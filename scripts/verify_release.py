@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Verifies a released Android SDK version exactly as a partner receives it from the CDN.
 
-    verify_release.py 0.1.0 [--base-url URL] [--expect releases/0.1.0.json] [--work DIR]
+    verify_release.py 0.1.0 [--product tryon|skinai] [--base-url URL] [--expect releases/0.1.0.json] [--work DIR]
 
-It downloads tryon/<version>/build-info.json and every file it lists, then checks:
+Try-On and SkinAI share one version line: each version is one product's release. It downloads
+<product>/<version>/build-info.json and every file it lists, then checks:
   * every listed path is a plain relative path inside the Maven repository (the manifest comes from the network),
   * sha256 and size of each file against build-info.json, and the published .sha256/.sha512 sidecars,
-  * the POMs: tryon-ui needs exactly tryon-kit <version>, tryon-kit needs exactly the engine in build-info.json,
+  * the POMs: tryon-ui needs exactly tryon-kit <version>; the Kit (tryon-kit or skinai-kit) needs exactly the engine in
+    build-info.json,
   * the engine AAR is 16 KB aligned (checked here, not trusted from build-info.json). A pre-release whose build-info.json
     records an unaligned engine only gets a warning; a final version never does,
   * with --expect (used automatically when releases/<version>.json exists next to this script), that build-info.json is identical to the copy recorded at release time, so a manifest that was
@@ -32,7 +34,11 @@ import check_apk_16kb  # noqa: E402
 CDN = "https://assets.pulpoar.com/vision/pulpo-sdk/android"
 USER_AGENT = "PulpoAR-SDK-CI/1.0"  # the CDN rejects Python's generic urllib agent
 GROUP = "com.pulpoar"
-ENGINE = "pulpo-module"
+# The artifacts each product releases (the Kit first, then what depends on it) and the engine its Kit pins.
+PRODUCTS = {
+    "tryon": {"packages": ("tryon-kit", "tryon-ui"), "engine": "pulpo-module"},
+    "skinai": {"packages": ("skinai-kit",), "engine": "pulpo-skinai"},
+}
 SEMVER = re.compile(r"^\d+\.\d+\.\d+(-(alpha|beta|rc)\.\d+)?$")
 ARTIFACT_FILE = re.compile(r"^com/pulpoar/(?P<name>[a-z-]+)/(?P<version>[0-9A-Za-z.\-]+)/(?P<file>[0-9A-Za-z.\-]+)$")
 POM_NS = {"m": "http://maven.apache.org/POM/4.0.0"}
@@ -71,15 +77,20 @@ def safe_path(path, coordinate):
     return bool(match) and ".." not in path and match["name"] == name and match["version"] == version and match["file"] not in (".", "..")
 
 
-def check_info_shape(info, version):
+def check_info_shape(info, version, product="tryon"):
     problems = []
+    if info.get("product", "tryon") != product:  # Try-On manifests before SkinAI have no product
+        problems.append(f"build-info.json: product is {info.get('product', 'tryon')!r}, expected {product}")
     if info.get("schema") != 1:
         problems.append(f"build-info.json: unsupported schema {info.get('schema')!r}")
     if info.get("version") != version:
         problems.append(f"build-info.json: version is {info.get('version')!r}, expected {version}")
     coordinates = [a.get("coordinate") for a in info.get("artifacts", [])]
     engine = info.get("engine", {}).get("coordinate", "")
-    for expected in (f"{GROUP}:tryon-kit:{version}", f"{GROUP}:tryon-ui:{version}", engine):
+    engine_name = PRODUCTS[product]["engine"]
+    if not engine.startswith(f"{GROUP}:{engine_name}:"):
+        problems.append(f"build-info.json: engine is {engine!r}, expected {GROUP}:{engine_name}:<version>")
+    for expected in [f"{GROUP}:{name}:{version}" for name in PRODUCTS[product]["packages"]] + [engine]:
         if not expected or expected not in coordinates:
             problems.append(f"build-info.json: artifact {expected or 'engine'} is missing")
     if len(coordinates) != len(set(coordinates)):
@@ -92,16 +103,16 @@ def check_info_shape(info, version):
         for item in artifact.get("files", []):
             if not safe_path(item.get("path"), coordinate):
                 problems.append(f"build-info.json: refusing path {item.get('path')!r} for {coordinate}")
-        problems += check_inventory(artifact, coordinate)
+        problems += check_inventory(artifact, coordinate, engine_name)
     return problems
 
 
-def check_inventory(artifact, coordinate):
+def check_inventory(artifact, coordinate, engine_name):
     """The files every release of this artifact must list, once each: the manifest cannot omit what partners resolve."""
     group, name, version = coordinate.split(":")
     paths = [item.get("path") for item in artifact.get("files", [])]
     base = f"com/pulpoar/{name}/{version}/{name}-{version}"
-    required = [f"{base}.aar", f"{base}.pom"] + ([] if name == ENGINE else [f"{base}.module"])
+    required = [f"{base}.aar", f"{base}.pom"] + ([] if name == engine_name else [f"{base}.module"])
     problems = [f"build-info.json: {coordinate} does not list {path.rsplit('/', 1)[-1]}" for path in required if path not in paths]
     problems += [f"build-info.json: {path} is listed twice" for path in sorted({p for p in paths if paths.count(p) > 1})]
     return problems
@@ -113,17 +124,19 @@ def unaligned_allowed(version, info):
     return "-" in version and any(aligned is False for aligned in recorded.values())
 
 
-def verify(version, base_url=CDN, expect=None, work=None):
+def verify(version, base_url=CDN, expect=None, work=None, product="tryon"):
     """Returns the list of problems; empty means the release verifies."""
     if not SEMVER.match(version):
         return [f"{version!r} is not a release version"]
+    if product not in PRODUCTS:
+        return [f"unknown product {product!r}"]
     maven = f"{base_url.rstrip('/')}/maven"
     try:
-        raw_info = fetch(f"{base_url.rstrip('/')}/tryon/{version}/build-info.json")
+        raw_info = fetch(f"{base_url.rstrip('/')}/{product}/{version}/build-info.json")
         info = json.loads(raw_info)
     except (OSError, ValueError) as error:
         return [f"cannot read build-info.json for {version}: {error}"]
-    problems = check_info_shape(info, version)
+    problems = check_info_shape(info, version, product)
     if expect is not None:
         if json.loads(Path(expect).read_text()) != info:
             problems.append(f"build-info.json on the CDN differs from the recorded {expect}")
@@ -162,12 +175,13 @@ def verify(version, base_url=CDN, expect=None, work=None):
                         problems.append(f"{item['path']}.{algorithm}: does not match the file")
 
         _, engine_name, engine_version = info["engine"]["coordinate"].split(":")
-        for name, expected in (("tryon-ui", {"tryon-kit": version}), ("tryon-kit", {"pulpo-module": f"[{engine_version}]"})):
+        kit, *dependents = PRODUCTS[product]["packages"]
+        for name, expected in [(kit, {engine_name: f"[{engine_version}]"})] + [(d, {kit: version}) for d in dependents]:
             pom = files.get(f"com/pulpoar/{name}/{version}/{name}-{version}.pom")
             if pom is None:
                 problems.append(f"{name}-{version}.pom was not downloaded")
                 continue
-            actual = {k: v for k, v in pom_dependencies(pom.read_bytes()).items() if k in expected or k == "pulpo-module"}
+            actual = {k: v for k, v in pom_dependencies(pom.read_bytes()).items() if k in expected or k == engine_name}
             if actual != expected:
                 problems.append(f"{name} POM depends on {actual}, expected {expected}")
         aar = files.get(f"com/pulpoar/{engine_name}/{engine_version}/{engine_name}-{engine_version}.aar")
@@ -189,7 +203,8 @@ def verify(version, base_url=CDN, expect=None, work=None):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("version")
-    parser.add_argument("--base-url", default=CDN, help="CDN folder holding maven/ and tryon/ (default: %(default)s)")
+    parser.add_argument("--product", choices=sorted(PRODUCTS), help="default: the recorded release's, else tryon")
+    parser.add_argument("--base-url", default=CDN, help="CDN folder holding maven/, tryon/ and skinai/ (default: %(default)s)")
     parser.add_argument("--expect", type=Path, help="recorded build-info.json (releases/<version>.json) the CDN copy must equal")
     parser.add_argument("--work", type=Path, help="keep downloads here (default: a temporary folder)")
     args = parser.parse_args(argv)
@@ -198,7 +213,9 @@ def main(argv=None):
         if recorded.is_file():
             args.expect = recorded
             print(f"comparing with the recorded {recorded.name}")
-    problems = verify(args.version, args.base_url, args.expect, args.work)
+    if args.product is None:
+        args.product = json.loads(args.expect.read_text()).get("product", "tryon") if args.expect else "tryon"
+    problems = verify(args.version, args.base_url, args.expect, args.work, args.product)
     for problem in problems:
         print(f"FAIL {problem}")
     print(f"{'FAILED' if problems else 'VERIFIED'} {args.version}")

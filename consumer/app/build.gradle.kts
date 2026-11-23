@@ -32,6 +32,15 @@ android {
 
 kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
 
+// Which SDK the app integrates: tryon (tryon-ui) or skinai (skinai-kit). Each has its own MainActivity.
+val product = providers.gradleProperty("product").getOrElse("tryon")
+val sdkArtifact =
+    mapOf("tryon" to "tryon-ui", "skinai" to "skinai-kit")[product]
+        ?: error("-Pproduct must be tryon or skinai, not $product")
+val engineArtifact = if (product == "skinai") "pulpo-skinai" else "pulpo-module"
+
+android.sourceSets["main"].kotlin.srcDir("src/$product/kotlin")
+
 val sdkVersion =
     providers.gradleProperty("sdkVersion").orNull
         ?: error("Pass -PsdkVersion=<released version>, for example -PsdkVersion=0.1.0")
@@ -40,7 +49,7 @@ val expectedEngine =
         ?: error("Pass -PexpectedEngine=<engine version the release pins>")
 
 dependencies {
-    implementation("com.pulpoar:tryon-ui:$sdkVersion")
+    implementation("com.pulpoar:$sdkArtifact:$sdkVersion")
     implementation(platform("androidx.compose:compose-bom:2025.08.00"))
     implementation("androidx.activity:activity-compose:1.10.1")
 }
@@ -55,7 +64,7 @@ tasks.register("verifyResolvedEngine") {
                 .resolvedArtifacts
         val engine =
             artifacts.single {
-                it.moduleVersion.id.group == "com.pulpoar" && it.name == "pulpo-module"
+                it.moduleVersion.id.group == "com.pulpoar" && it.name == engineArtifact
             }
         check(engine.moduleVersion.id.version == expectedEngine) {
             "Unexpected engine: ${engine.moduleVersion.id}, expected $expectedEngine"
