@@ -6,6 +6,17 @@ Try-On and SkinAI share one version line: each version releases one of them.
 
 ## Unreleased
 
+## 0.2.0-rc.1
+
+First preview of SkinAI on Android: `skinai-kit` (skin analysis without UI), published as a Maven artifact on the
+PulpoAR CDN. Pins engine `com.pulpoar:pulpo-skinai:0.2.0`.
+
+- **Kit:** `PulpoSkinAIKit.configure`, then `PulpoSkinAnalyzer` to `prepare()` the models, `checkFace` a live frame,
+  `analyze` a photo into a `PulpoSkinAnalysis`, and draw a `liveVisual` for one issue. `PulpoSkinAIProject` carries the
+  project's concerns, questions and theme (`PulpoSkinAITheme`); `PulpoSkinAIKit.track` sends `PulpoSkinAIEvent` analytics.
+- **16 KB page size:** the engine's 64-bit native libraries (`arm64-v8a`, `x86_64`) are 16 KB aligned.
+- **No UI yet:** a ready-made `skinai-ui` comes in a later release. Not yet run on a 16 KB device by PulpoAR.
+
 ## 0.1.0
 
 First final release. Pins engine `com.pulpoar:pulpo-module:0.0.3`.
