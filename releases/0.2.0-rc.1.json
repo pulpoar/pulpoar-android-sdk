@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "product": "skinai",
+  "version": "0.2.0-rc.1",
+  "commit": "b59c61a5edf51340c841ba5e551ae9d364a8fd3c",
+  "run": "https://github.com/pulpoar/plugin-mobile-sdk/actions/runs/45293818421",
+  "repository": "https://assets.pulpoar.com/vision/pulpo-sdk/android/maven",
+  "toolchain": {
+    "agp": "8.13.2",
+    "kotlin": "2.2.21",
+    "jdk": "openjdk version \"17.0.21\" 2026-10-20",
+    "compile_sdk": 36,
+    "min_sdk": 24
+  },
+  "engine": {
+    "coordinate": "com.pulpoar:pulpo-skinai:0.2.0",
+    "sha256": "a1cdbfe731c76e3fb1daf3248b78e088a0220f5ac0f27b8cd19c29e6f0045863",
+    "native_libraries_16kb_aligned": {
+      "jni/arm64-v8a/libonnxruntime.so": true,
+      "jni/arm64-v8a/libpulpo-skinai.so": true,
+      "jni/x86_64/libonnxruntime.so": true,
+      "jni/x86_64/libpulpo-skinai.so": true
+    }
+  },
+  "artifacts": [
+    {
+      "coordinate": "com.pulpoar:skinai-kit:0.2.0-rc.1",
+      "files": [
+        {
+          "path": "com/pulpoar/skinai-kit/0.2.0-rc.1/skinai-kit-0.2.0-rc.1.aar",
+          "sha256": "41cd8579910477685e24e531383f6ccabc5aa48db4f63b2f40a897eaa4ed05d3",
+          "bytes": 255371
+        },
+        {
+          "path": "com/pulpoar/skinai-kit/0.2.0-rc.1/skinai-kit-0.2.0-rc.1.module",
+          "sha256": "da24c474dbd45d657e007c5463848caaea53a62afd7eff90cb45d379fda71554",
+          "bytes": 3342
+        },
+        {
+          "path": "com/pulpoar/skinai-kit/0.2.0-rc.1/skinai-kit-0.2.0-rc.1.pom",
+          "sha256": "3e6cde093fab5be1b331459e6e07373188b3072d7f9dd33d73498be3bbbae597",
+          "bytes": 2616
+        }
+      ]
+    },
+    {
+      "coordinate": "com.pulpoar:pulpo-skinai:0.2.0",
+      "files": [
+        {
+          "path": "com/pulpoar/pulpo-skinai/0.2.0/pulpo-skinai-0.2.0.aar",
+          "sha256": "a1cdbfe731c76e3fb1daf3248b78e088a0220f5ac0f27b8cd19c29e6f0045863",
+          "bytes": 59737309
+        },
+        {
+          "path": "com/pulpoar/pulpo-skinai/0.2.0/pulpo-skinai-0.2.0.pom",
+          "sha256": "3daeb67561e614e44fb5b8d0b1a070c38fdac6610526378208f55ce13f3abd83",
+          "bytes": 395
+        }
+      ]
+    }
+  ]
+}
