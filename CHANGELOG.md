@@ -6,6 +6,33 @@ Try-On and SkinAI share one version line: each version releases one of them.
 
 ## Unreleased
 
+## 0.3.0
+
+Try-On: `tryon-kit` and `tryon-ui` 0.3.0. Pins engine `com.pulpoar:pulpo-module:0.0.3`, unchanged from `0.1.0`.
+**Breaking** for apps that call the Kit's `track*` methods or pass `PulpoTryOnUIConfiguration`'s `customizeTheme`
+positionally; apps that only use `tryon-ui` with named arguments need no changes.
+
+- **Try-on events, as the web plugin sends them:** new `PulpoTryOnEvent` (one subclass per web event, with the same
+  data and the web's event name in `key`, such as `onAddToCart`). `PulpoTryOnSession.tryOnEvents` (a `Flow`) delivers
+  every event to the app, whatever the analytics consent: the Kit's own (`Ready`, `Error`, `UsePhoto`, `VariantSelect`,
+  `AppliedVariantsChange`, `TryOn`) and those a UI tracks. Collect it before `loadCatalog()` or `start` to get `Ready`;
+  a slow collector keeps its latest 256.
+- **tryon-ui:** `PulpoTryOnUIConfiguration(onEvent = ...)` receives every event on the main thread, for the app's own
+  analytics. The live camera has a mirror button, as on the web.
+- **tryon-kit:** `PulpoCameraView.isMirrored` (default `true`: the front camera shows as a mirror). Display only; photos
+  and snapshots are never flipped.
+- **Out-of-stock shades, as on the web:** listed and still try-on-able, labelled with the theme's out-of-stock text, without
+  Add to cart, and left out of Add to cart all.
+- **Removed (breaking):** `PulpoUIEvent` and the `track*` methods. Migrate with `track(event)`:
+  - `trackUIEvent(PulpoUIEvent.X)` → `track(PulpoTryOnEvent.X)` (the names are kept)
+  - `trackAddToCart(variants)` → `track(PulpoTryOnEvent.AddToCart(variants))`; likewise `trackGoToProduct`,
+    `trackExperienceSelect`, `trackLookSelect`, `trackBrandSelect`, `trackCategorySelect` and `trackProductSelect`
+  - The events the Kit sends itself are ignored by `track`, with a warning, so they aren't counted twice.
+- **PulpoTryOnUIConfiguration:** `onEvent` is the new seventh parameter. A call passing `customizeTheme` as the seventh
+  positional argument must name it; the trailing-lambda form (`PulpoTryOnUIConfiguration { theme -> ... }`) is unchanged.
+- **Analytics, matching the web's reports:** `onReady` carries `entryType: "embedded"`; hiding and showing the try-on no
+  longer counts the restored shades and photo as new choices; a project preloaded while another runs keeps its own visit.
+
 ## 0.2.0-rc.1
 
 First preview of SkinAI on Android: `skinai-kit` (skin analysis without UI), published as a Maven artifact on the
