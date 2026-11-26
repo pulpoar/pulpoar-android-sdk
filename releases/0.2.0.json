@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "product": "tryon",
+  "version": "0.2.0",
+  "commit": "b2636a85978980a1ba7d06f6cdaa348736f6dc6f",
+  "run": "https://github.com/pulpoar/plugin-mobile-sdk/actions/runs/45805870422",
+  "repository": "https://assets.pulpoar.com/vision/pulpo-sdk/android/maven",
+  "toolchain": {
+    "agp": "8.13.2",
+    "kotlin": "2.2.21",
+    "jdk": "openjdk version \"17.0.21\" 2026-10-20",
+    "compile_sdk": 36,
+    "min_sdk": 24
+  },
+  "engine": {
+    "coordinate": "com.pulpoar:pulpo-module:0.0.3",
+    "sha256": "5de928bb80ab6b27e47f444407bec93f696ce5a641c1847e76f608cf001cfd5b",
+    "native_libraries_16kb_aligned": {
+      "jni/arm64-v8a/libnative-lib.so": true,
+      "jni/arm64-v8a/libonnxruntime.so": true,
+      "jni/x86_64/libnative-lib.so": true,
+      "jni/x86_64/libonnxruntime.so": true
+    }
+  },
+  "artifacts": [
+    {
+      "coordinate": "com.pulpoar:tryon-kit:0.2.0",
+      "files": [
+        {
+          "path": "com/pulpoar/tryon-kit/0.2.0/tryon-kit-0.2.0.aar",
+          "sha256": "956eccb6faf4a46063469b9979ebd29de0df94ffadac7031e35431dabc719474",
+          "bytes": 374766
+        },
+        {
+          "path": "com/pulpoar/tryon-kit/0.2.0/tryon-kit-0.2.0.module",
+          "sha256": "f0a0374a86738c2f8e3d013172b260f14afdab804fc789563439cd9888ea731d",
+          "bytes": 3990
+        },
+        {
+          "path": "com/pulpoar/tryon-kit/0.2.0/tryon-kit-0.2.0.pom",
+          "sha256": "8cf1d1e9145e1da637e457e386859498b40e6acd878b7984d9956ae0025dd953",
+          "bytes": 3157
+        }
+      ]
+    },
+    {
+      "coordinate": "com.pulpoar:tryon-ui:0.2.0",
+      "files": [
+        {
+          "path": "com/pulpoar/tryon-ui/0.2.0/tryon-ui-0.2.0.aar",
+          "sha256": "5721d6231610cf1eb394848b09716d5e81574ca6a6ef86e4d5a39c673557cd49",
+          "bytes": 893940
+        },
+        {
+          "path": "com/pulpoar/tryon-ui/0.2.0/tryon-ui-0.2.0.module",
+          "sha256": "6e8f2bc0ad9dd6513d24e120350150c5fc550b98a046b16104dc3aa44f2b416c",
+          "bytes": 4526
+        },
+        {
+          "path": "com/pulpoar/tryon-ui/0.2.0/tryon-ui-0.2.0.pom",
+          "sha256": "94afc59389ab201ecb3d699ce5005aaf69aaf1901d210ba254b802ed7bda27e5",
+          "bytes": 3868
+        }
+      ]
+    },
+    {
+      "coordinate": "com.pulpoar:pulpo-module:0.0.3",
+      "files": [
+        {
+          "path": "com/pulpoar/pulpo-module/0.0.3/pulpo-module-0.0.3.aar",
+          "sha256": "5de928bb80ab6b27e47f444407bec93f696ce5a641c1847e76f608cf001cfd5b",
+          "bytes": 68367149
+        },
+        {
+          "path": "com/pulpoar/pulpo-module/0.0.3/pulpo-module-0.0.3.pom",
+          "sha256": "0cf897132790cf7509a27185b2ead9df6901437358deae6b610071062d7d83db",
+          "bytes": 745
+        }
+      ]
+    }
+  ]
+}
