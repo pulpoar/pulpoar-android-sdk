@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Verifies a released Android SDK version exactly as a partner receives it from the CDN.
 
-    verify_release.py 0.1.0 [--product tryon|skinai] [--base-url URL] [--expect releases/0.1.0.json] [--work DIR]
+    verify_release.py 0.1.0 --product tryon|skinai [--base-url URL] [--work DIR]
+    verify_release.py 0.1.0 --expect releases/0.1.0.json [--base-url URL] [--work DIR]
 
-Try-On and SkinAI share one version line: each version is one product's release. It downloads
+Try-On and SkinAI each have their own version line, so a version alone doesn't name a release: pass --product, or
+--expect with a recorded manifest (its product is the release's). It downloads
 <product>/<version>/build-info.json and every file it lists, then checks:
   * every listed path is a plain relative path inside the Maven repository (the manifest comes from the network),
   * sha256 and size of each file against build-info.json, and the published .sha256/.sha512 sidecars,
@@ -11,8 +13,9 @@ Try-On and SkinAI share one version line: each version is one product's release.
     build-info.json,
   * the engine AAR is 16 KB aligned (checked here, not trusted from build-info.json). A pre-release whose build-info.json
     records an unaligned engine only gets a warning; a final version never does,
-  * with --expect (used automatically when releases/<version>.json exists next to this script), that build-info.json is identical to the copy recorded at release time, so a manifest that was
-    replaced together with its files is caught.
+  * with --expect (used automatically when a clone of this repository records the release: releases/<product>/<version>.json,
+    or the legacy releases/<version>.json of the same product), that build-info.json is identical to the copy recorded
+    at release time, so a manifest that was replaced together with its files is caught.
 Exits non-zero with every problem listed. Standard library only.
 """
 import argparse
@@ -30,6 +33,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import check_apk_16kb  # noqa: E402
+import release_guard  # noqa: E402
 
 CDN = "https://assets.pulpoar.com/vision/pulpo-sdk/android"
 USER_AGENT = "PulpoAR-SDK-CI/1.0"  # the CDN rejects Python's generic urllib agent
@@ -203,18 +207,22 @@ def verify(version, base_url=CDN, expect=None, work=None, product="tryon"):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("version")
-    parser.add_argument("--product", choices=sorted(PRODUCTS), help="default: the recorded release's, else tryon")
+    parser.add_argument("--product", choices=sorted(PRODUCTS), help="required unless --expect names the release")
     parser.add_argument("--base-url", default=CDN, help="CDN folder holding maven/, tryon/ and skinai/ (default: %(default)s)")
-    parser.add_argument("--expect", type=Path, help="recorded build-info.json (releases/<version>.json) the CDN copy must equal")
+    parser.add_argument("--expect", type=Path, help="recorded build-info.json the CDN copy must equal; its product is the release's")
     parser.add_argument("--work", type=Path, help="keep downloads here (default: a temporary folder)")
     args = parser.parse_args(argv)
-    if args.expect is None:
-        recorded = Path(__file__).resolve().parent.parent / "releases" / f"{args.version}.json"
-        if recorded.is_file():
-            args.expect = recorded
-            print(f"comparing with the recorded {recorded.name}")
-    if args.product is None:
-        args.product = json.loads(args.expect.read_text()).get("product", "tryon") if args.expect else "tryon"
+    if args.expect is not None:
+        recorded = release_guard.manifest_product(args.expect)
+        if args.product not in (None, recorded):
+            parser.error(f"--product {args.product} contradicts --expect {args.expect}, which records a {recorded} release")
+        args.product = recorded
+    elif args.product is None:
+        parser.error("pass --product (tryon or skinai), or --expect with the recorded manifest")
+    else:
+        args.expect = release_guard.record(args.product, args.version, release_guard.ROOT)
+        if args.expect is not None:
+            print(f"comparing with the recorded {args.expect.relative_to(release_guard.ROOT)}")
     problems = verify(args.version, args.base_url, args.expect, args.work, args.product)
     for problem in problems:
         print(f"FAIL {problem}")

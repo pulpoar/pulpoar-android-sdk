@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 import check_apk_16kb as apk
+import release_guard as rg
 import verify_release as vr
 
 
@@ -281,6 +282,179 @@ class SkinAIVerifyReleaseTests(unittest.TestCase):
         with mock.patch.object(vr, "verify", lambda *a: seen.setdefault("product", a[4]) and []):
             self.assertEqual(vr.main([self.VERSION, "--expect", str(recorded)]), 0)
         self.assertEqual(seen["product"], "skinai")
+
+    def test_a_product_that_contradicts_the_recorded_release_fails(self):
+        recorded = self.dir / f"{self.VERSION}.json"
+        recorded.write_text(json.dumps(self.info))
+        with mock.patch.object(vr, "verify", lambda *a: []), self.assertRaises(SystemExit) as stop:
+            vr.main([self.VERSION, "--product", "tryon", "--expect", str(recorded)])
+        self.assertEqual(stop.exception.code, 2)
+
+    def test_a_version_alone_does_not_name_a_release(self):
+        with mock.patch.object(vr, "verify", lambda *a: []), self.assertRaises(SystemExit) as stop:
+            vr.main([self.VERSION])
+        self.assertEqual(stop.exception.code, 2)
+
+
+class Repository:
+    """A clone's releases/ and CHANGELOG.md as they are at the cutover: legacy flat records, then the product folders."""
+
+    CHANGELOG = """# Changelog
+
+## Unreleased
+
+## Try-On 0.2.0
+
+Try-On notes.
+
+## SkinAI 0.2.0-rc.1
+
+SkinAI preview notes.
+
+## Try-On 0.1.0
+
+First.
+"""
+
+    def make_repository(self):
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root)
+        (self.root / "releases").mkdir()
+        self.flat("0.2.0", {"version": "0.2.0", "product": "tryon"})
+        self.flat("0.2.0-rc.1", {"version": "0.2.0-rc.1", "product": "skinai"})
+        self.flat("0.1.0", {"version": "0.1.0"})  # Try-On manifests from before SkinAI name no product
+        (self.root / "CHANGELOG.md").write_text(self.CHANGELOG)
+
+    def flat(self, version, info):
+        (self.root / "releases" / f"{version}.json").write_text(json.dumps(info))
+
+    def nested(self, product, version):
+        (self.root / "releases" / product).mkdir(exist_ok=True)
+        path = self.root / "releases" / product / f"{version}.json"
+        path.write_text(json.dumps({"version": version, "product": product}))
+        return path
+
+    def changelog(self, text):
+        (self.root / "CHANGELOG.md").write_text(self.CHANGELOG.replace("## Unreleased\n", "## Unreleased\n" + text))
+
+
+class ReleaseGuardTests(Repository, unittest.TestCase):
+    def setUp(self):
+        self.make_repository()
+
+    def check(self, product, version):
+        return rg.problems_for_new(product, version, self.root)
+
+    def test_skinai_0_2_0_is_new_next_to_the_legacy_try_on_0_2_0(self):
+        self.assertIsNone(rg.record("skinai", "0.2.0", self.root))
+        self.assertEqual(rg.record("tryon", "0.2.0", self.root), self.root / "releases" / "0.2.0.json")
+        self.assertEqual(self.check("skinai", "0.2.0"), ["CHANGELOG.md has no '## SkinAI 0.2.0' section"])
+        self.changelog("\n## SkinAI 0.2.0\n\nFinal.\n\n")
+        self.assertEqual(self.check("skinai", "0.2.0"), [])
+
+    def test_a_released_version_is_refused_in_either_layout(self):
+        self.assertIn("already released (recorded in releases/0.2.0.json)", self.check("tryon", "0.2.0")[0])
+        self.assertIn("already released", self.check("tryon", "0.1.0")[0])
+        self.assertIn("already released", self.check("skinai", "0.2.0-rc.1")[0])
+        self.nested("skinai", "0.2.0")
+        self.assertIn("recorded in releases/skinai/0.2.0.json", self.check("skinai", "0.2.0")[0])
+
+    def test_one_version_under_both_products_is_two_releases(self):
+        tryon, skinai = self.nested("tryon", "9.9.9"), self.nested("skinai", "9.9.9")
+        self.assertEqual(rg.record("tryon", "9.9.9", self.root), tryon)
+        self.assertEqual(rg.record("skinai", "9.9.9", self.root), skinai)
+        listed = {(p, v) for p, v, _ in rg.records(self.root)}
+        self.assertEqual(listed, {("tryon", "0.2.0"), ("skinai", "0.2.0-rc.1"), ("tryon", "0.1.0"),
+                                  ("tryon", "9.9.9"), ("skinai", "9.9.9")})
+
+    def test_the_heading_matches_literally(self):
+        self.changelog("\n## Try-On 0x3x0\n\nNot 0.3.0.\n\n")
+        self.assertEqual(self.check("tryon", "0.3.0"), ["CHANGELOG.md has no '## Try-On 0.3.0' section"])
+        self.assertEqual(self.check("skinai", "0.1.0"), ["CHANGELOG.md has no '## SkinAI 0.1.0' section"])
+
+    def test_an_empty_section_is_refused(self):
+        self.changelog("\n## Try-On 0.3.0\n\n\n")
+        self.assertEqual(self.check("tryon", "0.3.0"), ["CHANGELOG.md's '## Try-On 0.3.0' section is empty"])
+        self.assertEqual(rg.main(["notes", "tryon", "0.3.0", str(self.root / "notes.md")], self.root), 1)
+        self.assertFalse((self.root / "notes.md").exists())
+
+    def test_notes_are_the_section_alone(self):
+        out = self.root / "notes.md"
+        self.assertEqual(rg.main(["notes", "skinai", "0.2.0-rc.1", str(out)], self.root), 0)
+        self.assertEqual(out.read_text(), "SkinAI preview notes.\n")
+
+    def test_bad_input_is_refused(self):
+        self.assertIn("product must be", self.check("", "1.0.0")[0])
+        self.assertIn("version must look like", self.check("tryon", "v1.0.0")[0])
+
+    def test_audit_needs_a_section_for_every_record(self):
+        self.assertEqual(rg.main(["audit"], self.root), 0)
+        self.nested("skinai", "0.2.0")
+        self.assertEqual(rg.main(["audit"], self.root), 1)
+
+    def test_the_verifier_finds_only_its_own_products_record(self):
+        seen = []
+        with mock.patch.object(rg, "ROOT", self.root), mock.patch.object(vr, "verify", lambda *a: seen.append(a) or []):
+            self.assertEqual(vr.main(["0.2.0", "--product", "skinai"]), 0)
+            self.assertEqual(vr.main(["0.2.0", "--product", "tryon"]), 0)
+        self.assertEqual([(a[2], a[4]) for a in seen], [(None, "skinai"), (self.root / "releases" / "0.2.0.json", "tryon")])
+
+
+class FinishReleaseTests(Repository, unittest.TestCase):
+    """finish_release.sh with git, gh and python3 stubbed: its only write, gh release create, follows every check."""
+
+    STUB = """#!/usr/bin/env bash
+echo "$(basename "$0") $*" >> "$STUB_LOG"
+case "$(basename "$0") $*" in *"$STUB_FAIL"*) [[ -n "$STUB_FAIL" ]] && exit 1 ;; esac
+[[ "$(basename "$0") $1" == "git status" ]] && printf %s "$STUB_DIRTY"
+exit 0
+"""
+
+    def setUp(self):
+        self.make_repository()
+        (self.root / "scripts").mkdir()
+        shutil.copy(Path(__file__).with_name("finish_release.sh"), self.root / "scripts")
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        for tool in ("git", "gh", "python3"):
+            (self.bin / tool).write_text(self.STUB)
+            (self.bin / tool).chmod(0o755)
+        self.nested("skinai", "0.2.0")
+        self.nested("tryon", "9.9.9-rc.1")
+
+    def finish(self, product, version, fail="", dirty=""):
+        log = self.root / "log"
+        log.write_text("")
+        env = {"PATH": f"{self.bin}:/usr/bin:/bin", "STUB_LOG": str(log), "STUB_FAIL": fail, "STUB_DIRTY": dirty}
+        import subprocess
+        code = subprocess.run(["bash", str(self.root / "scripts" / "finish_release.sh"), product, version], env=env,
+                              capture_output=True).returncode
+        return code, log.read_text().splitlines()
+
+    def test_a_good_release_is_announced_once_under_its_tag(self):
+        code, calls = self.finish("skinai", "0.2.0")
+        self.assertEqual(code, 0)
+        self.assertIn("git -c advice.detachedHead=false checkout skinai-0.2.0", calls)
+        self.assertIn("python3 scripts/verify_release.py 0.2.0 --product skinai --expect releases/skinai/0.2.0.json", calls)
+        self.assertTrue(calls[-1].startswith("gh release create skinai-0.2.0 --verify-tag --title SkinAI 0.2.0 --notes-file "))
+        self.assertFalse(calls[-1].endswith("--latest=false"))
+
+    def test_a_pre_release_is_never_latest(self):
+        code, calls = self.finish("tryon", "9.9.9-rc.1")
+        self.assertEqual(code, 0)
+        self.assertTrue(calls[-1].endswith("--prerelease --latest=false"))
+
+    def test_any_failure_makes_no_release(self):
+        for fail in ("git fetch", "checkout", "verify_release.py", "release_guard.py notes"):
+            code, calls = self.finish("skinai", "0.2.0", fail=fail)
+            self.assertNotEqual(code, 0, fail)
+            self.assertFalse([c for c in calls if c.startswith("gh ")], fail)
+
+    def test_no_release_without_the_record_a_dirty_tree_or_a_known_product(self):
+        for args in (("tryon", "0.2.0"), ("skinai", "0.2.0", "", " M README.md"), ("studio", "0.2.0")):
+            code, calls = self.finish(*args)
+            self.assertNotEqual(code, 0, args)
+            self.assertFalse([c for c in calls if c.startswith("gh ")], args)
 
 
 if __name__ == "__main__":
