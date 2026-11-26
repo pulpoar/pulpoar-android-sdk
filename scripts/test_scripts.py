@@ -265,6 +265,20 @@ class SkinAIVerifyReleaseTests(unittest.TestCase):
         self.remote[f"com/pulpoar/skinai-ui/{self.VERSION}/skinai-ui-{self.VERSION}.pom"] = self.pom("skinai-ui", {"skinai-kit": "9.9.9"})
         self.assertTrue(any("skinai-ui POM" in p for p in self.run_verify()))
 
+    def drop_ui(self):
+        self.info["artifacts"] = [a for a in self.info["artifacts"] if ":skinai-ui:" not in a["coordinate"]]
+        self.publish_info()
+
+    def test_a_release_without_the_ui_fails(self):
+        self.drop_ui()
+        self.assertIn(f"build-info.json: artifact com.pulpoar:skinai-ui:{self.VERSION} is missing", self.run_verify())
+
+    def test_a_release_from_before_the_ui_verifies_with_the_kit_alone(self):
+        self.VERSION = "0.2.0-rc.1"  # published with skinai-kit only
+        self.build()
+        self.drop_ui()
+        self.assertEqual(self.run_verify(), [])
+
     def test_unaligned_engine_fails(self):
         self.build(engine_alignment=4096)
         self.assertTrue(any(p.startswith("engine ") for p in self.run_verify()))

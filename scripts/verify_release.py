@@ -39,6 +39,13 @@ PRODUCTS = {
     "tryon": {"packages": ("tryon-kit", "tryon-ui"), "engine": "pulpo-module"},
     "skinai": {"packages": ("skinai-kit", "skinai-ui"), "engine": "pulpo-skinai"},
 }
+# Releases published before their product had a UI: they keep verifying as published, the Kit alone.
+KIT_ONLY_RELEASES = {"skinai": {"0.2.0-rc.1"}}
+
+
+def packages(product, version):
+    names = PRODUCTS[product]["packages"]
+    return names[:1] if version in KIT_ONLY_RELEASES.get(product, ()) else names
 SEMVER = re.compile(r"^\d+\.\d+\.\d+(-(alpha|beta|rc)\.\d+)?$")
 ARTIFACT_FILE = re.compile(r"^com/pulpoar/(?P<name>[a-z-]+)/(?P<version>[0-9A-Za-z.\-]+)/(?P<file>[0-9A-Za-z.\-]+)$")
 POM_NS = {"m": "http://maven.apache.org/POM/4.0.0"}
@@ -90,7 +97,7 @@ def check_info_shape(info, version, product="tryon"):
     engine_name = PRODUCTS[product]["engine"]
     if not engine.startswith(f"{GROUP}:{engine_name}:"):
         problems.append(f"build-info.json: engine is {engine!r}, expected {GROUP}:{engine_name}:<version>")
-    for expected in [f"{GROUP}:{name}:{version}" for name in PRODUCTS[product]["packages"]] + [engine]:
+    for expected in [f"{GROUP}:{name}:{version}" for name in packages(product, version)] + [engine]:
         if not expected or expected not in coordinates:
             problems.append(f"build-info.json: artifact {expected or 'engine'} is missing")
     if len(coordinates) != len(set(coordinates)):
@@ -175,7 +182,7 @@ def verify(version, base_url=CDN, expect=None, work=None, product="tryon"):
                         problems.append(f"{item['path']}.{algorithm}: does not match the file")
 
         _, engine_name, engine_version = info["engine"]["coordinate"].split(":")
-        kit, *dependents = PRODUCTS[product]["packages"]
+        kit, *dependents = packages(product, version)
         for name, expected in [(kit, {engine_name: f"[{engine_version}]"})] + [(d, {kit: version}) for d in dependents]:
             pom = files.get(f"com/pulpoar/{name}/{version}/{name}-{version}.pom")
             if pom is None:
