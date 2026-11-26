@@ -6,9 +6,9 @@ Try-On and SkinAI share one version line: each version releases one of them.
 
 ## Unreleased
 
-## 0.3.0
+## 0.2.0
 
-Try-On: `tryon-kit` and `tryon-ui` 0.3.0. Pins engine `com.pulpoar:pulpo-module:0.0.3`, unchanged from `0.1.0`.
+Try-On: `tryon-kit` and `tryon-ui` 0.2.0. Pins engine `com.pulpoar:pulpo-module:0.0.3`, unchanged from `0.1.0`.
 **Breaking** for apps that call the Kit's `track*` methods or pass `PulpoTryOnUIConfiguration`'s `customizeTheme`
 positionally; apps that only use `tryon-ui` with named arguments need no changes.
 
