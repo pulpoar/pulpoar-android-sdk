@@ -7,8 +7,8 @@ Try-On and SkinAI share one version line: each version is one product's release.
 <product>/<version>/build-info.json and every file it lists, then checks:
   * every listed path is a plain relative path inside the Maven repository (the manifest comes from the network),
   * sha256 and size of each file against build-info.json, and the published .sha256/.sha512 sidecars,
-  * the POMs: tryon-ui needs exactly tryon-kit <version>; the Kit (tryon-kit or skinai-kit) needs exactly the engine in
-    build-info.json,
+  * the POMs: each UI (tryon-ui, skinai-ui) needs exactly its Kit <version>; the Kit (tryon-kit or skinai-kit) needs
+    exactly the engine in build-info.json,
   * the engine AAR is 16 KB aligned (checked here, not trusted from build-info.json). A pre-release whose build-info.json
     records an unaligned engine only gets a warning; a final version never does,
   * with --expect (used automatically when releases/<version>.json exists next to this script), that build-info.json is identical to the copy recorded at release time, so a manifest that was
@@ -37,7 +37,7 @@ GROUP = "com.pulpoar"
 # The artifacts each product releases (the Kit first, then what depends on it) and the engine its Kit pins.
 PRODUCTS = {
     "tryon": {"packages": ("tryon-kit", "tryon-ui"), "engine": "pulpo-module"},
-    "skinai": {"packages": ("skinai-kit",), "engine": "pulpo-skinai"},
+    "skinai": {"packages": ("skinai-kit", "skinai-ui"), "engine": "pulpo-skinai"},
 }
 SEMVER = re.compile(r"^\d+\.\d+\.\d+(-(alpha|beta|rc)\.\d+)?$")
 ARTIFACT_FILE = re.compile(r"^com/pulpoar/(?P<name>[a-z-]+)/(?P<version>[0-9A-Za-z.\-]+)/(?P<file>[0-9A-Za-z.\-]+)$")

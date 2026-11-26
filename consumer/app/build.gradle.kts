@@ -32,10 +32,10 @@ android {
 
 kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
 
-// Which SDK the app integrates: tryon (tryon-ui) or skinai (skinai-kit). Each has its own MainActivity.
+// Which SDK the app integrates: tryon (tryon-ui) or skinai (skinai-ui). Each has its own MainActivity.
 val product = providers.gradleProperty("product").getOrElse("tryon")
 val sdkArtifact =
-    mapOf("tryon" to "tryon-ui", "skinai" to "skinai-kit")[product]
+    mapOf("tryon" to "tryon-ui", "skinai" to "skinai-ui")[product]
         ?: error("-Pproduct must be tryon or skinai, not $product")
 val engineArtifact = if (product == "skinai") "pulpo-skinai" else "pulpo-module"
 

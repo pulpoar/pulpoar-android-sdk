@@ -122,7 +122,7 @@ permission. `setIntensity`, `clear`, `snapshot` and the `track*` analytics calls
 pages for the public classes are not published yet; the source of truth is the released AAR's Kotlin signatures (your IDE
 shows the KDoc).
 
-[`consumer/`](consumer) is a minimal app using the UI (`-Pproduct=skinai`: the SkinAI Kit instead); the release
+[`consumer/`](consumer) is a minimal app using the UI (`-Pproduct=skinai`: the SkinAI UI instead); the release
 workflow builds it against the published files. Build it yourself:
 
 ```sh
