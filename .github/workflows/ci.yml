@@ -23,12 +23,7 @@ jobs:
       - name: Script tests
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts -v
       - name: Changelog has a section for every recorded release
-        run: |
-          for file in releases/*.json; do
-            [ -e "$file" ] || continue
-            version=$(basename "$file" .json)
-            grep -q "^## $version\$" CHANGELOG.md || { echo "CHANGELOG.md has no '## $version' section"; exit 1; }
-          done
+        run: python3 scripts/release_guard.py audit
 
   released-versions:
     # Every recorded release must still verify against the CDN, and the CDN's manifest must equal the recorded one.
@@ -38,9 +33,9 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Verify
         run: |
-          shopt -s nullglob
-          files=(releases/*.json)
-          [ ${#files[@]} -gt 0 ] || { echo "no releases recorded yet"; exit 0; }
-          for file in "${files[@]}"; do
-            python3 scripts/verify_release.py "$(basename "$file" .json)" --expect "$file"
-          done
+          # Both layouts: releases/<product>/<version>.json, and the legacy releases/<version>.json.
+          listing=$(python3 scripts/release_guard.py records)
+          [[ -n "$listing" ]] || { echo "no releases recorded yet"; exit 0; }
+          while read -r product version file; do
+            python3 scripts/verify_release.py "$version" --product "$product" --expect "$file"
+          done <<< "$listing"

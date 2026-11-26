@@ -2,7 +2,8 @@ name: Release
 
 # Announces a version that the private build repository already published to the CDN. It publishes nothing itself:
 # it proves that what partners resolve is complete, intact and installable, then records it, tags it and creates the
-# GitHub release.
+# GitHub release under the tag <product>-<version> (Try-On and SkinAI each have their own version line). If the tag
+# lands but the GitHub release does not, finish it with scripts/finish_release.sh; never re-tag.
 
 on:
   workflow_dispatch:
@@ -11,14 +12,16 @@ on:
         description: "Version already published by the source repository's Android Try-On or SkinAI Release, e.g. 0.1.0 (no leading v)"
         required: true
       product:
-        description: "Which SDK the version releases (Try-On and SkinAI share one version line)"
-        type: choice
-        options: [tryon, skinai]
-        default: tryon
+        # A string, not a choice: a choice preselects a product, and a release under the wrong one burns its version.
+        description: "Which SDK the version releases: tryon or skinai (each has its own version line)"
+        required: true
+        type: string
 
 permissions:
   contents: write
 
+# Runs queue, and each checks out the default branch when it starts, so it commits on top of the one before it.
+# GitHub keeps one pending run per group (a third dispatch cancels the queued second): dispatch one at a time.
 concurrency:
   group: release
   cancel-in-progress: false
@@ -32,18 +35,22 @@ jobs:
     env:
       VERSION: ${{ inputs.version }}
       PRODUCT: ${{ inputs.product }}
+      TAG: ${{ inputs.product }}-${{ inputs.version }}
+      NAME: ${{ inputs.product == 'skinai' && 'SkinAI' || 'Try-On' }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.repository.default_branch }} # the latest, not the commit this run was dispatched at
 
       - name: Validate
         run: |
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$ ]] || { echo "version must look like 1.2.3 or 1.2.3-rc.1"; exit 1; }
-          if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" >/dev/null 2>&1; then
-            echo "tag $VERSION already exists"; exit 1
-          fi
-          grep -q "^## $VERSION\$" CHANGELOG.md || { echo "add a '## $VERSION' section to CHANGELOG.md first"; exit 1; }
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts
+          # Product, version, not yet recorded in either layout, and a non-empty '## <Name> <version>' changelog section.
+          python3 scripts/release_guard.py check "$PRODUCT" "$VERSION"
+          # Standalone assignment, so a network error fails the step instead of reading as "no tag".
+          existing=$(git ls-remote --tags origin "refs/tags/$TAG")
+          [[ -z "$existing" ]] || { echo "tag $TAG already exists"; exit 1; }
 
       - name: Verify the published files
         run: python3 scripts/verify_release.py "$VERSION" --product "$PRODUCT" --work "$RUNNER_TEMP/verify"
@@ -84,16 +91,16 @@ jobs:
 
       - name: Record, tag and release
         run: |
-          mkdir -p releases
-          cp "$RUNNER_TEMP/verify/build-info.json" "releases/$VERSION.json"
-          awk -v v="## $VERSION" '$0==v{f=1;next} /^## /{f=0} f' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          python3 scripts/release_guard.py notes "$PRODUCT" "$VERSION" "$RUNNER_TEMP/notes.md"
+          mkdir -p "releases/$PRODUCT"
+          cp "$RUNNER_TEMP/verify/build-info.json" "releases/$PRODUCT/$VERSION.json"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "releases/$VERSION.json"
-          git commit -m "Release $VERSION"
-          git tag -a "$VERSION" -m "PulpoAR Android SDK $VERSION ($PRODUCT)"
+          git add "releases/$PRODUCT/$VERSION.json"
+          git commit -m "Release $NAME $VERSION"
+          git tag -a "$TAG" -m "PulpoAR Android SDK: $NAME $VERSION"
           # Atomic: either the branch and the tag both land or neither does, so a rejected push can be retried.
-          git push --atomic origin HEAD:${{ github.event.repository.default_branch }} "$VERSION"
+          git push --atomic origin HEAD:${{ github.event.repository.default_branch }} "$TAG"
           flags=()
-          [[ "$VERSION" == *-* ]] && flags+=(--prerelease)
-          gh release create "$VERSION" --title "$VERSION ($([ "$PRODUCT" = skinai ] && echo SkinAI || echo Try-On))" --notes-file "$RUNNER_TEMP/notes.md" "${flags[@]}"
+          [[ "$VERSION" == *-* ]] && flags+=(--prerelease --latest=false)
+          gh release create "$TAG" --verify-tag --title "$NAME $VERSION" --notes-file "$RUNNER_TEMP/notes.md" "${flags[@]}"

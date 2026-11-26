@@ -1,17 +1,21 @@
 # PulpoAR Android SDK
 
-Virtual try-on for native Android apps, as a Jetpack Compose view or as a headless Kit you build your own UI on.
+Virtual try-on and skin analysis for native Android apps: Try-On as a Jetpack Compose view or as a headless Kit you
+build your own UI on, and SkinAI as a headless Kit.
 
 This repository is the public home of the SDK: install instructions, changelog and release verification.
 The libraries themselves are served as a Maven repository from the PulpoAR CDN. The source is private.
 
 ## Modules
 
-| Maven artifact | Use it when |
-| --- | --- |
-| `com.pulpoar:tryon-ui` | You want the ready-made try-on: start screen, camera consent, live camera, photo capture, products and looks, styled with your Studio theme. One composable, `PulpoTryOnView`. Includes `tryon-kit`. |
-| `com.pulpoar:tryon-kit` | You build your own UI. Session, camera view, catalog and product application, no screens. |
+| Maven artifact | Product | Latest | Use it when |
+| --- | --- | --- | --- |
+| `com.pulpoar:tryon-ui` | Try-On | `0.2.0` | You want the ready-made try-on: start screen, camera consent, live camera, photo capture, products and looks, styled with your Studio theme. One composable, `PulpoTryOnView`. Includes `tryon-kit`. |
+| `com.pulpoar:tryon-kit` | Try-On | `0.2.0` | You build your own UI. Session, camera view, catalog and product application, no screens. |
+| `com.pulpoar:skinai-kit` | SkinAI | `0.2.0-rc.1` (preview) | Skin analysis of a photo and live face checks, no screens. |
 
+Try-On and SkinAI each have their own version line: use the version listed for your product. A Try-On version doesn't
+exist for SkinAI unless SkinAI released it too (each GitHub release is tagged `tryon-<version>` or `skinai-<version>`).
 `tryon-ui` and `tryon-kit` always share one version. Each release comes with the exact rendering engine version it was tested with (pinned strictly in both the Gradle
 metadata and the POM), so you cannot end up with an untested combination.
 
@@ -47,7 +51,7 @@ dependencyResolutionManagement {
 }
 ```
 
-In your app module (pick the newest version from the [releases](../../releases)):
+In your app module (the version for your product from the [Modules](#modules) table):
 
 ```kotlin
 dependencies {
@@ -137,7 +141,7 @@ Every file has `.sha256` and `.sha512` sidecars, and each version has a manifest
 size and SHA-256. Before a version is announced, the release workflow in this repository checks that what the CDN serves:
 
 - matches the sizes and SHA-256 sums the build recorded, and that the manifest is saved in this repository as
-  [`releases/<version>.json`](releases); a weekly job checks again that the CDN still serves exactly that,
+  [`releases/<product>/<version>.json`](releases) (releases up to Try-On 0.2.0 and SkinAI 0.2.0-rc.1: `releases/<version>.json`); a weekly job checks again that the CDN still serves exactly that,
 - pins the right engine in the POMs, and
 - builds into a debug and a minified release app whose 64-bit native libraries are all 16 KB aligned. A pre-release
   (`-rc.N`) may carry an engine that is not (`0.1.0-rc.1` did), and says so in its `build-info.json` and the changelog.
@@ -145,14 +149,13 @@ size and SHA-256. Before a version is announced, the release workflow in this re
 Run the same check yourself, with Python 3:
 
 ```sh
-python3 scripts/verify_release.py <version> --expect releases/<version>.json
+python3 scripts/verify_release.py <version> --product <tryon|skinai>
 ```
 
-Try-On and SkinAI share one version line, so each version is one product's release; the script reads which from
-`releases/<version>.json` (or pass `--product skinai`).
-
-`--expect` compares the CDN's manifest with the one recorded in this repository when the version was released. Without it,
-the script uses `releases/<version>.json` automatically if it sits next to the script (a clone of this repository).
+A version alone doesn't name a release, so pass the product. In a clone of this repository the script compares the
+CDN's manifest with the one recorded when the version was released (`releases/<product>/<version>.json`, or the legacy
+`releases/<version>.json` of the same product). `--expect <recorded manifest>` names that copy explicitly; the release's
+product is then the manifest's, and a `--product` that contradicts it is an error.
 
 Gradle can also pin the checksums of the files you use in your own build: generate
 `gradle/verification-metadata.xml` with `./gradlew --write-verification-metadata sha256` and commit it.

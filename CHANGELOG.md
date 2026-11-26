@@ -2,11 +2,13 @@
 
 All notable changes to the PulpoAR Android SDK are listed here. Versions follow semantic versioning; every release
 section states the engine it pins (`com.pulpoar:pulpo-module` for Try-On, `com.pulpoar:pulpo-skinai` for SkinAI).
-Try-On and SkinAI share one version line: each version releases one of them.
+Try-On and SkinAI each have their own version line; sections are headed `## Try-On <version>` or `## SkinAI <version>`, and releases are
+tagged `tryon-<version>` or `skinai-<version>`. Releases up to Try-On 0.2.0 and SkinAI 0.2.0-rc.1 were tagged with the
+bare version (`0.2.0`, `0.2.0-rc.1`).
 
 ## Unreleased
 
-## 0.2.0
+## Try-On 0.2.0
 
 Try-On: `tryon-kit` and `tryon-ui` 0.2.0. Pins engine `com.pulpoar:pulpo-module:0.0.3`, unchanged from `0.1.0`.
 **Breaking** for apps that call the Kit's `track*` methods or pass `PulpoTryOnUIConfiguration`'s `customizeTheme`
@@ -33,7 +35,7 @@ positionally; apps that only use `tryon-ui` with named arguments need no changes
 - **Analytics, matching the web's reports:** `onReady` carries `entryType: "embedded"`; hiding and showing the try-on no
   longer counts the restored shades and photo as new choices; a project preloaded while another runs keeps its own visit.
 
-## 0.2.0-rc.1
+## SkinAI 0.2.0-rc.1
 
 First preview of SkinAI on Android: `skinai-kit` (skin analysis without UI), published as a Maven artifact on the
 PulpoAR CDN. Pins engine `com.pulpoar:pulpo-skinai:0.2.0`.
@@ -44,7 +46,7 @@ PulpoAR CDN. Pins engine `com.pulpoar:pulpo-skinai:0.2.0`.
 - **16 KB page size:** the engine's 64-bit native libraries (`arm64-v8a`, `x86_64`) are 16 KB aligned.
 - **No UI yet:** a ready-made `skinai-ui` comes in a later release. Not yet run on a 16 KB device by PulpoAR.
 
-## 0.1.0
+## Try-On 0.1.0
 
 First final release. Pins engine `com.pulpoar:pulpo-module:0.0.3`.
 
@@ -56,7 +58,7 @@ First final release. Pins engine `com.pulpoar:pulpo-module:0.0.3`.
 - **16 KB page size:** the engine's 64-bit native libraries are aligned, as in `0.1.0-rc.2`, and PulpoAR has now run the
   SDK on a 16 KB device.
 
-## 0.1.0-rc.2
+## Try-On 0.1.0-rc.2
 
 Pins engine `com.pulpoar:pulpo-module:0.0.3`.
 
@@ -69,7 +71,7 @@ Pins engine `com.pulpoar:pulpo-module:0.0.3`.
 - The engine no longer ships a separate `libjsoncpp.so`.
 - `tryon-kit` and `tryon-ui` are unchanged from `0.1.0-rc.1` apart from the engine pin. Not yet verified with a minified build on a device.
 
-## 0.1.0-rc.1
+## Try-On 0.1.0-rc.1
 
 First preview of the Android SDK for integration work: `tryon-ui` (ready-made try-on screens) and `tryon-kit`
 (try-on without UI), published as Maven artifacts on the PulpoAR CDN. Pins engine `com.pulpoar:pulpo-module:0.0.2`.
