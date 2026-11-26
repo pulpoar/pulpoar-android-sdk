@@ -118,7 +118,7 @@ class TryOnActivity : ComponentActivity() {
 
 `session.state` reports `Idle`, `Loading`, `Running`, `Suspended`, `Failed` and `Disposed`; `session.stop()` releases the
 camera and engine and keeps the session. `Mode.Photo` renders a bitmap you pass to `setPhoto` and needs no camera
-permission. `setIntensity`, `clear`, `snapshot` and the `track*` analytics calls are on the same class. API reference
+permission. `setIntensity`, `clear` and `snapshot` are on the same class; `tryOnEvents` delivers the web plugin's try-on events, and a UI of your own reports its shopper actions with `track(PulpoTryOnEvent)`. API reference
 pages for the public classes are not published yet; the source of truth is the released AAR's Kotlin signatures (your IDE
 shows the KDoc).
 
