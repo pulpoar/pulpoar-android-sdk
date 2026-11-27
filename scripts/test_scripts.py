@@ -238,7 +238,7 @@ class VerifyReleaseTests(unittest.TestCase):
 
 
 class SkinAIVerifyReleaseTests(unittest.TestCase):
-    """A SkinAI release: skinai-kit alone, pinning pulpo-skinai. Reuses the Try-On fixture, not its Try-On-only tests."""
+    """A SkinAI release: skinai-kit pinning pulpo-skinai, and skinai-ui on it. Reuses the Try-On fixture, not its Try-On-only tests."""
     VERSION, PRODUCT, ENGINE_NAME, ENGINE = "1.2.3", "skinai", "pulpo-skinai", "0.2.0"
     setUp, pom, publish_info, run_verify = (VerifyReleaseTests.setUp, VerifyReleaseTests.pom,
                                             VerifyReleaseTests.publish_info, VerifyReleaseTests.run_verify)
@@ -246,6 +246,7 @@ class SkinAIVerifyReleaseTests(unittest.TestCase):
     def payloads(self, engine_aar):
         return {
             ("skinai-kit", self.VERSION): {"aar": b"kit", "pom": self.pom("skinai-kit", {"pulpo-skinai": f"[{self.ENGINE}]"}), "module": b"{}"},
+            ("skinai-ui", self.VERSION): {"aar": b"ui", "pom": self.pom("skinai-ui", {"skinai-kit": self.VERSION}), "module": b"{}"},
             ("pulpo-skinai", self.ENGINE): {"aar": engine_aar, "pom": self.pom("pulpo-skinai", {})},
         }
 
@@ -260,6 +261,24 @@ class SkinAIVerifyReleaseTests(unittest.TestCase):
     def test_wrong_engine_pin_fails(self):
         self.remote[f"com/pulpoar/skinai-kit/{self.VERSION}/skinai-kit-{self.VERSION}.pom"] = self.pom("skinai-kit", {"pulpo-skinai": "[9.9.9]"})
         self.assertTrue(any("POM" in p for p in self.run_verify()))
+
+    def test_ui_on_another_kit_version_fails(self):
+        self.remote[f"com/pulpoar/skinai-ui/{self.VERSION}/skinai-ui-{self.VERSION}.pom"] = self.pom("skinai-ui", {"skinai-kit": "9.9.9"})
+        self.assertTrue(any("skinai-ui POM" in p for p in self.run_verify()))
+
+    def drop_ui(self):
+        self.info["artifacts"] = [a for a in self.info["artifacts"] if ":skinai-ui:" not in a["coordinate"]]
+        self.publish_info()
+
+    def test_a_release_without_the_ui_fails(self):
+        self.drop_ui()
+        self.assertIn(f"build-info.json: artifact com.pulpoar:skinai-ui:{self.VERSION} is missing", self.run_verify())
+
+    def test_a_release_from_before_the_ui_verifies_with_the_kit_alone(self):
+        self.VERSION = "0.2.0-rc.1"  # published with skinai-kit only
+        self.build()
+        self.drop_ui()
+        self.assertEqual(self.run_verify(), [])
 
     def test_unaligned_engine_fails(self):
         self.build(engine_alignment=4096)

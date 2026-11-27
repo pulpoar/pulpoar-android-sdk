@@ -9,8 +9,8 @@ Try-On and SkinAI each have their own version line, so a version alone doesn't n
 <product>/<version>/build-info.json and every file it lists, then checks:
   * every listed path is a plain relative path inside the Maven repository (the manifest comes from the network),
   * sha256 and size of each file against build-info.json, and the published .sha256/.sha512 sidecars,
-  * the POMs: tryon-ui needs exactly tryon-kit <version>; the Kit (tryon-kit or skinai-kit) needs exactly the engine in
-    build-info.json,
+  * the POMs: each UI (tryon-ui, skinai-ui) needs exactly its Kit <version>; the Kit (tryon-kit or skinai-kit) needs
+    exactly the engine in build-info.json,
   * the engine AAR is 16 KB aligned (checked here, not trusted from build-info.json). A pre-release whose build-info.json
     records an unaligned engine only gets a warning; a final version never does,
   * with --expect (used automatically when a clone of this repository records the release: releases/<product>/<version>.json,
@@ -41,8 +41,15 @@ GROUP = "com.pulpoar"
 # The artifacts each product releases (the Kit first, then what depends on it) and the engine its Kit pins.
 PRODUCTS = {
     "tryon": {"packages": ("tryon-kit", "tryon-ui"), "engine": "pulpo-module"},
-    "skinai": {"packages": ("skinai-kit",), "engine": "pulpo-skinai"},
+    "skinai": {"packages": ("skinai-kit", "skinai-ui"), "engine": "pulpo-skinai"},
 }
+# Releases published before their product had a UI: they keep verifying as published, the Kit alone.
+KIT_ONLY_RELEASES = {"skinai": {"0.2.0-rc.1"}}
+
+
+def packages(product, version):
+    names = PRODUCTS[product]["packages"]
+    return names[:1] if version in KIT_ONLY_RELEASES.get(product, ()) else names
 SEMVER = re.compile(r"^\d+\.\d+\.\d+(-(alpha|beta|rc)\.\d+)?$")
 ARTIFACT_FILE = re.compile(r"^com/pulpoar/(?P<name>[a-z-]+)/(?P<version>[0-9A-Za-z.\-]+)/(?P<file>[0-9A-Za-z.\-]+)$")
 POM_NS = {"m": "http://maven.apache.org/POM/4.0.0"}
@@ -94,7 +101,7 @@ def check_info_shape(info, version, product="tryon"):
     engine_name = PRODUCTS[product]["engine"]
     if not engine.startswith(f"{GROUP}:{engine_name}:"):
         problems.append(f"build-info.json: engine is {engine!r}, expected {GROUP}:{engine_name}:<version>")
-    for expected in [f"{GROUP}:{name}:{version}" for name in PRODUCTS[product]["packages"]] + [engine]:
+    for expected in [f"{GROUP}:{name}:{version}" for name in packages(product, version)] + [engine]:
         if not expected or expected not in coordinates:
             problems.append(f"build-info.json: artifact {expected or 'engine'} is missing")
     if len(coordinates) != len(set(coordinates)):
@@ -179,7 +186,7 @@ def verify(version, base_url=CDN, expect=None, work=None, product="tryon"):
                         problems.append(f"{item['path']}.{algorithm}: does not match the file")
 
         _, engine_name, engine_version = info["engine"]["coordinate"].split(":")
-        kit, *dependents = PRODUCTS[product]["packages"]
+        kit, *dependents = packages(product, version)
         for name, expected in [(kit, {engine_name: f"[{engine_version}]"})] + [(d, {kit: version}) for d in dependents]:
             pom = files.get(f"com/pulpoar/{name}/{version}/{name}-{version}.pom")
             if pom is None:
