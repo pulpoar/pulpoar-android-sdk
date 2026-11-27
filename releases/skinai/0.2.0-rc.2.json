@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "product": "skinai",
+  "version": "0.2.0-rc.2",
+  "commit": "ce76c97bb184ec70b31462b875939e50bfd8b636",
+  "run": "https://github.com/pulpoar/plugin-mobile-sdk/actions/runs/46076645521",
+  "repository": "https://assets.pulpoar.com/vision/pulpo-sdk/android/maven",
+  "toolchain": {
+    "agp": "8.13.2",
+    "kotlin": "2.2.21",
+    "jdk": "openjdk version \"17.0.21.1\" 2026-11-17",
+    "compile_sdk": 36,
+    "min_sdk": 24
+  },
+  "engine": {
+    "coordinate": "com.pulpoar:pulpo-skinai:0.2.0",
+    "sha256": "a1cdbfe731c76e3fb1daf3248b78e088a0220f5ac0f27b8cd19c29e6f0045863",
+    "native_libraries_16kb_aligned": {
+      "jni/arm64-v8a/libonnxruntime.so": true,
+      "jni/arm64-v8a/libpulpo-skinai.so": true,
+      "jni/x86_64/libonnxruntime.so": true,
+      "jni/x86_64/libpulpo-skinai.so": true
+    }
+  },
+  "artifacts": [
+    {
+      "coordinate": "com.pulpoar:skinai-kit:0.2.0-rc.2",
+      "files": [
+        {
+          "path": "com/pulpoar/skinai-kit/0.2.0-rc.2/skinai-kit-0.2.0-rc.2.aar",
+          "sha256": "729a9fa1fb6671a0dc1352c7c508c82bbb89376d6b0719c3dc303b5150ddd8ce",
+          "bytes": 255396
+        },
+        {
+          "path": "com/pulpoar/skinai-kit/0.2.0-rc.2/skinai-kit-0.2.0-rc.2.module",
+          "sha256": "5113b94a7cba957f3e4794cb9173e330013bb1f5da73c6dc3b869dee73821512",
+          "bytes": 3342
+        },
+        {
+          "path": "com/pulpoar/skinai-kit/0.2.0-rc.2/skinai-kit-0.2.0-rc.2.pom",
+          "sha256": "bf99058dbecfa5611758b06c1be5a30020a2d411f3faedd781dd60f86f63f0c6",
+          "bytes": 2616
+        }
+      ]
+    },
+    {
+      "coordinate": "com.pulpoar:skinai-ui:0.2.0-rc.2",
+      "files": [
+        {
+          "path": "com/pulpoar/skinai-ui/0.2.0-rc.2/skinai-ui-0.2.0-rc.2.aar",
+          "sha256": "052f1c4100b52e293f870f0a12e422c500920a096f0ad503f07ac4e86b7e4b9a",
+          "bytes": 523901
+        },
+        {
+          "path": "com/pulpoar/skinai-ui/0.2.0-rc.2/skinai-ui-0.2.0-rc.2.module",
+          "sha256": "2d65d52752237d438b471dd5c6d71165bf65a61ea9f808adf17546e90465faef",
+          "bytes": 4774
+        },
+        {
+          "path": "com/pulpoar/skinai-ui/0.2.0-rc.2/skinai-ui-0.2.0-rc.2.pom",
+          "sha256": "80ce48ab52cb99e7897854f7997c2b709d9d3a432de71e30ee761a9ac7eab9c3",
+          "bytes": 4076
+        }
+      ]
+    },
+    {
+      "coordinate": "com.pulpoar:pulpo-skinai:0.2.0",
+      "files": [
+        {
+          "path": "com/pulpoar/pulpo-skinai/0.2.0/pulpo-skinai-0.2.0.aar",
+          "sha256": "a1cdbfe731c76e3fb1daf3248b78e088a0220f5ac0f27b8cd19c29e6f0045863",
+          "bytes": 59737309
+        },
+        {
+          "path": "com/pulpoar/pulpo-skinai/0.2.0/pulpo-skinai-0.2.0.pom",
+          "sha256": "3daeb67561e614e44fb5b8d0b1a070c38fdac6610526378208f55ce13f3abd83",
+          "bytes": 395
+        }
+      ]
+    }
+  ]
+}
