@@ -12,7 +12,8 @@ The libraries themselves are served as a Maven repository from the PulpoAR CDN. 
 | --- | --- | --- | --- |
 | `com.pulpoar:tryon-ui` | Try-On | `0.2.0` | You want the ready-made try-on: start screen, camera consent, live camera, photo capture, products and looks, styled with your Studio theme. One composable, `PulpoTryOnView`. Includes `tryon-kit`. |
 | `com.pulpoar:tryon-kit` | Try-On | `0.2.0` | You build your own UI. Session, camera view, catalog and product application, no screens. |
-| `com.pulpoar:skinai-kit` | SkinAI | `0.2.0-rc.1` (preview) | Skin analysis of a photo and live face checks, no screens. |
+| `com.pulpoar:skinai-ui` | SkinAI | `0.2.0-rc.2` (preview) | You want the ready-made skin analysis: questionnaire, guided selfie, result with the skin health score and Studio's recommended products, styled with your Studio theme. `PulpoSkinAIActivity` or the `PulpoSkinAIView` composable. Includes `skinai-kit`. |
+| `com.pulpoar:skinai-kit` | SkinAI | `0.2.0-rc.2` (preview) | Skin analysis of a photo and live face checks, no screens. |
 
 Try-On and SkinAI each have their own version line: use the version listed for your product. A Try-On version doesn't
 exist for SkinAI unless SkinAI released it too (each GitHub release is tagged `tryon-<version>` or `skinai-<version>`).

@@ -8,6 +8,20 @@ bare version (`0.2.0`, `0.2.0-rc.1`).
 
 ## Unreleased
 
+## SkinAI 0.2.0-rc.2
+
+Second SkinAI preview: adds `skinai-ui`, the ready-made skin analysis, next to `skinai-kit`. Both 0.2.0-rc.2; pins
+engine `com.pulpoar:pulpo-skinai:0.2.0`, unchanged from `0.2.0-rc.1`. No API changes in `skinai-kit`.
+
+- **New `skinai-ui`:** the opening screen, the project's questionnaire, a guided selfie with live face checks, on-device
+  analysis, and the result with the skin health score, each concern drawn on the photo, and the products and routines
+  Studio recommends, styled with the project's Studio theme. Start it with `PulpoSkinAIActivity.intent(context,
+  projectKey)`, or embed the `PulpoSkinAIView` composable; `PulpoSkinAIUIConfiguration` takes the language and the
+  product tap, close, error and event callbacks. Includes `skinai-kit`.
+- **Add to cart on the products tab:** an add-all button under the shown products, off unless the project's Studio theme
+  turns on `result.withAddToCartAllProducts` (the routines tab keeps its button).
+- **Not for production yet:** not yet run on a 16 KB device by PulpoAR.
+
 ## Try-On 0.2.0
 
 Try-On: `tryon-kit` and `tryon-ui` 0.2.0. Pins engine `com.pulpoar:pulpo-module:0.0.3`, unchanged from `0.1.0`.
